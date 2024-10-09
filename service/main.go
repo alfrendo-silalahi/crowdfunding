@@ -3,11 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"service/user"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -29,7 +27,7 @@ func main() {
 	dbUrl := viper.GetString("database.url")
 	dbUsername := viper.GetString("database.username")
 	dbPassword := viper.GetString("database.password")
-	port := viper.GetString("server.port")
+	// port := viper.GetString("server.port")
 
 	dsn := fmt.Sprintf("%s:%s@tcp%s?charset=utf8mb4&parseTime=True&loc=Local", dbUsername, dbPassword, dbUrl)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -38,15 +36,14 @@ func main() {
 	}
 	fmt.Println("Connect to database successfully")
 
-	// fetch users from db
-	var users []user.User
-	db.Find(&users)
+	var userRepository user.Repository = user.NewRepository(db)
+	var userService user.Service = user.NewService(userRepository)
+	registerUserRequest := user.RegisterUserRequest{
+		Name:       "Alan Walker",
+		Occupation: "Music Creator",
+		Email:      "alanwalker@gmail.com",
+		Password:   "alanwalker",
+	}
 
-	// create Gin router instance
-	router := gin.Default()
-	router.GET("/api/users", func(c *gin.Context) {
-		c.JSON(http.StatusOK, users)
-	})
-
-	router.Run(port)
+	userService.RegisterUser(registerUserRequest)
 }
