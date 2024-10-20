@@ -1,6 +1,8 @@
 package user
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"golang.org/x/crypto/bcrypt"
+)
 
 type Service interface {
 	RegisterUser(registerUserRequest RegisterUserRequest) (User, error)

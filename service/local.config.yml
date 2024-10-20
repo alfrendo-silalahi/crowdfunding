@@ -1,0 +1,8 @@
+server:
+  port: ':3030'
+
+database:
+  url: (127.0.0.1:3306)/crowdfunding
+  username: root
+
+  password: root
