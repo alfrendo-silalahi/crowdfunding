@@ -42,6 +42,13 @@ func main() {
 	var userService user.Service = user.NewService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
 
+	user, err := userRepository.FindByEmail("aaaaa")
+	if err != nil {
+		fmt.Println("user record not found!")
+		return
+	}
+	fmt.Println(user)
+
 	router := gin.Default()
 	api := router.Group("/api/v1")
 
