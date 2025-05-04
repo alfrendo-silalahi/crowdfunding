@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	// read configuration
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
 	viper.AddConfigPath(".")
@@ -26,6 +27,7 @@ func main() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
+	// database connection
 	dbUrl := viper.GetString("database.url")
 	dbUsername := viper.GetString("database.username")
 	dbPassword := viper.GetString("database.password")
@@ -38,17 +40,26 @@ func main() {
 	}
 	fmt.Println("Connect to database successfully")
 
+	// instantiation dependencies
 	var userRepository user.Repository = user.NewRepository(db)
 	var userService user.Service = user.NewService(userRepository)
-	userHandler := handler.NewUserHandler(userService)
 
-	user, err := userRepository.FindByEmail("aaaaa")
+	user, err := userService.Login(user.LoginRequest{
+		Email:    "alfrendo.silalahi@email.com",
+		Password: "password",
+	})
+
 	if err != nil {
-		fmt.Println("user record not found!")
+		fmt.Println(err.Error())
 		return
 	}
+
+	fmt.Println("Berhasil menemukan user")
 	fmt.Println(user)
 
+	userHandler := handler.NewUserHandler(userService)
+
+	// routing
 	router := gin.Default()
 	api := router.Group("/api/v1")
 

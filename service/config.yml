@@ -1,4 +1,7 @@
 database:
-  url: 
-  username: 
-  password: 
+  url:
+  username:
+  password:
+
+server:
+  port:
