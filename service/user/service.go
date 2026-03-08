@@ -2,12 +2,13 @@ package user
 
 import (
 	"errors"
+	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service interface {
-	RegisterUser(registerUserRequest RegisterUserRequest) (User, error)
+	RegisterUser(registerUserRequest RegisterUserRequest) error
 	Login(loginRequest LoginRequest) (User, error)
 }
 
@@ -19,20 +20,27 @@ func NewService(repository Repository) *service {
 	return &service{repository}
 }
 
-func (s *service) RegisterUser(registerUserRequest RegisterUserRequest) (User, error) {
+func (s *service) RegisterUser(registerUserRequest RegisterUserRequest) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(registerUserRequest.Password), bcrypt.MinCost)
 	if err != nil {
-		return User{}, err
+		return err
 	}
 
 	user := User{
-		Name:         registerUserRequest.Name,
-		Occupation:   registerUserRequest.Occupation,
-		Email:        registerUserRequest.Email,
-		PasswordHash: string(passwordHash),
-		Role:         "user",
+		Username:   registerUserRequest.Username,
+		Occupation: registerUserRequest.Occupation,
+		Email:      registerUserRequest.Email,
+		Password:   string(passwordHash),
+		Role:       "user",
 	}
-	return s.userRepository.Save(user)
+
+	err = s.userRepository.Save(user)
+	if err != nil {
+		log.Printf("Error saving user: %v", err)
+		return errors.New("Failed to register new user.")
+	}
+
+	return nil
 }
 
 func (s *service) Login(loginRequest LoginRequest) (User, error) {
@@ -44,11 +52,7 @@ func (s *service) Login(loginRequest LoginRequest) (User, error) {
 		return user, err
 	}
 
-	if user.Id == 0 {
-		return user, errors.New("no user found on that email")
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		return user, err
 	}

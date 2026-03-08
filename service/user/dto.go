@@ -1,7 +1,7 @@
 package user
 
 type RegisterUserRequest struct {
-	Name       string `json:"name" binding:"required"`
+	Username   string `json:"username" binding:"required"`
 	Occupation string `json:"occupation" binding:"required"`
 	Email      string `json:"email" binding:"required,email"`
 	Password   string `json:"password" binding:"required"`
@@ -23,7 +23,7 @@ type registerUserResponse struct {
 func MapUserToRegisterUserResponse(user User, token string) registerUserResponse {
 	return registerUserResponse{
 		Id:         user.Id,
-		Name:       user.Name,
+		Name:       user.Username,
 		Occupation: user.Occupation,
 		Email:      user.Email,
 		Token:      token,

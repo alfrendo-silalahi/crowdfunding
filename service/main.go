@@ -1,69 +1,50 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
+	"service/config"
 	"service/handler"
 	"service/user"
-	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	// read configuration
-	viper.SetConfigName("config")
-	viper.SetConfigType("yml")
-	viper.AddConfigPath(".")
-
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
 	// database connection
-	dbUrl := viper.GetString("database.url")
-	dbUsername := viper.GetString("database.username")
-	dbPassword := viper.GetString("database.password")
-	port := viper.GetString("server.port")
-
-	dsn := fmt.Sprintf("%s:%s@tcp%s?charset=utf8mb4&parseTime=True&loc=Local", dbUsername, dbPassword, dbUrl)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	dbConfig := config.GetDbConfig()
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+		dbConfig.Host, dbConfig.Port, dbConfig.User, dbConfig.Password, dbConfig.Name)
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal(err)
 	}
-	fmt.Println("Connect to database successfully")
+	log.Printf("Successfully connnected to database.")
+	defer db.Close()
 
 	// instantiation dependencies
-	var userRepository user.Repository = user.NewRepository(db)
-	var userService user.Service = user.NewService(userRepository)
-
-	user, err := userService.Login(user.LoginRequest{
-		Email:    "alfrendo.silalahi@email.com",
-		Password: "password",
-	})
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	fmt.Println("Berhasil menemukan user")
-	fmt.Println(user)
-
+	userRepository := user.NewRepository(db)
+	userService := user.NewService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
 
-	// routing
-	router := gin.Default()
-	api := router.Group("/api/v1")
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 
-	api.POST("/users", userHandler.RegisterUser)
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", userHandler.RegisterUser)
+			r.Post("/login", userHandler.Login)
+		})
+	})
 
-	router.Run(port)
+	// start HTTP server
+	log.Println("Starting server on :3000")
+	if err := http.ListenAndServe(":3000", r); err != nil {
+		log.Fatalf("server error: %v", err)
+	}
 }

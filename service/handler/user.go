@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"service/helper"
 	"service/user"
-
-	"github.com/gin-gonic/gin"
 )
 
 type handler struct {
@@ -16,38 +16,46 @@ func NewUserHandler(service user.Service) *handler {
 	return &handler{service}
 }
 
-func (h *handler) RegisterUser(c *gin.Context) {
+func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var registerUserRequest user.RegisterUserRequest
-
-	err := c.ShouldBind(&registerUserRequest)
+	err := json.NewDecoder(r.Body).Decode(&registerUserRequest)
 	if err != nil {
-		errors := helper.FormatValidationError(err)
-		errorMessage := gin.H{"errors": errors}
-
-		response := helper.APIResponse("Register account failed", http.StatusUnprocessableEntity, "error", errorMessage)
-		c.JSON(http.StatusUnprocessableEntity, response)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = h.service.RegisterUser(registerUserRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	newUser, err := h.service.RegisterUser(registerUserRequest)
-	if err != nil {
-		response := helper.APIResponse(err.Error(), http.StatusBadRequest, "error", nil)
-		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	data := user.MapUserToRegisterUserResponse(newUser, "token")
-
-	response := helper.APIResponse("Account has been registered", http.StatusCreated, "Success", data)
-
-	c.JSON(http.StatusCreated, response)
+	w.Write([]byte("User successfully registered."))
 }
 
-func (h *handler) Login(c *gin.Context) {
-	// user masukkan input email dan password
-	// input ditangkap oleh handler
-	// mapping dari input user ke input struct
-	// input struct passsing service
-	// service mencari bantuan repository user dengan email
-	// jika ketemu maka perlu mencocokkan password
+func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
+	var loginRequest user.LoginRequest
+	err := json.NewDecoder(r.Body).Decode(&loginRequest)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, err = h.service.Login(loginRequest)
+	if err != nil {
+		log.Printf("Login error: %v", err)
+
+		resMessage := helper.APIResponse(
+			"Invalid email or password.",
+			http.StatusUnauthorized,
+			"error",
+			nil,
+		)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resMessage)
+		return
+	}
+
+	w.Write([]byte("User successfully logged in."))
 }
